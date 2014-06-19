@@ -4,41 +4,28 @@
         [ring.middleware edn json-params file file-info session stacktrace reload])
   (:require compojure.handler
             [taoensso.timbre :as timbre]
+            [chord.http-kit :refer [wrap-websocket-handler]]
             [clojure.core.async :refer [<! >! put! close! go-loop]]
-            [hiccup.page :refer [html5 include-js include-css]]))
+            [sudoku.page :as page]))
 
 (timbre/refer-timbre)
 
-(defn main-page []
-  (html5
-    [:head
-     [:link {:href "http://fonts.googleapis.com/css?family=Roboto&subset=latin,cyrillic-ext,cyrillic,latin-ext" 
-             :rel "stylesheet"
-             :type "text/css"}] 
-     [:meta {:charset "utf-8"}] 
-     [:meta {:name "viewport" :content "width=device-width, initial-scale=1.0"}] 
-     [:meta {:name "description" :content "Sudoku solver with websocket bindigns"}]
-     [:title "Sudoku"]
-     (include-css "/css/bootstrap.min.css")
-     (include-css "/css/bootstrap-custom.css")]
+(defn socket-handler [{:keys [ws-channel] :as req}]
+  (println "Opened connection from" (:remote-addr req))
+  (go-loop []
+           (when-let [{:keys [message error] :as msg} (<! ws-channel)]
+             (prn "Message received:" msg)
+             (>! ws-channel (if error
+                              (format "Error: '%s'." (pr-str msg))
+                              {:received (format "You passed: '%s' at %s." (pr-str message) (java.util.Date.))}))
+             (recur))))
 
-    [:body 
-     
-     [:div.container-fluid [:div#main.jumbotron [:h1 "Hello World!"]]]
-
-     (include-js "http://code.jquery.com/jquery.js")
-     (include-js "/js/bootstrap.min.js")
-     (include-js "/js/history.js")
-     (include-js "http://fb.me/react-0.10.0.js")
-     (include-js "http://d3js.org/d3.v3.min.js")
-     (include-js "/js/out/goog/base.js")
-     (include-js "/js/main.js")
-     [:script {:type "text/javascript"} "goog.require(\"sudoku.core\")"]]))
 
 (defroutes sudoku-routes
   ; Main page
-  (GET "/sudoku" req
-       (response (main-page))))
+  (GET "/" [] (response (page/main)))
+  (GET "/socket" [] (-> socket-handler 
+                        (wrap-websocket-handler {:format :json-kw}))))
 
 (def sudoku-app
   (-> sudoku-routes
