@@ -1,3 +1,7 @@
 (user/reset)
 (user/reset-all)
 (user/reset)
+(first [0 1 2 3])
+1
+(user/reset)
+(user/reset-all)

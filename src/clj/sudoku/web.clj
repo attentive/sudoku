@@ -11,15 +11,16 @@
 (timbre/refer-timbre)
 
 (defn socket-handler [{:keys [ws-channel] :as req}]
-  (println "Opened connection from" (:remote-addr req))
-  (go-loop []
-           (when-let [{:keys [message error] :as msg} (<! ws-channel)]
-             (prn "Message received:" msg)
-             (>! ws-channel (if error
-                              (format "Error: '%s'." (pr-str msg))
-                              {:received (format "You passed: '%s' at %s." (pr-str message) (java.util.Date.))}))
-             (recur))))
-
+  (info (str "Opened connection from " (:remote-addr req)))
+  (go-loop 
+    []
+    (when-let [{:keys [message error] :as msg} (<! ws-channel)]
+      (info (str "Message received: " message))
+      (>! ws-channel 
+          (if error
+            (format "Error: '%s'." (pr-str msg))
+            message)))
+      (recur)))
 
 (defroutes sudoku-routes
   ; Main page
