@@ -47,18 +47,16 @@
         (send-text! input-channel ws-channel)
         (receive-text! app ws-channel))))
 
-(def app-state (atom {:texts ["This is a default message"]}))
+(def app-state (atom {:texts ["Initial message"]}))
 
 (defn text-view [msg]
   (html [:p msg]))
 
 (defn texts-view [app owner]
   (reify
-    om/IInitState
-    (init-state [_]
-      (subscribe! app owner "ws://localhost:8082/socket" [:echo])
-      {:socket nil
-       :input nil})
+    om/IWillMount
+    (will-mount [_]
+      (subscribe! app owner "ws://localhost:8082/socket" [:echo]))
     om/IRenderState
     (render-state [_ {:keys [socket input]}]
       (let [texts (get app :texts)]
@@ -67,12 +65,19 @@
                 (reverse (map text-view texts))]
                [:div.row-fluid
                 [:input.input-large 
-                 {:value (first texts)
-                  :on-change #(when input
+                 {:on-change #(when input
                                 (put! input (.. % -target -value)))}]]])))))
 
+(defn main-view [app owner]
+  (reify
+    om/IRender
+    (render [_]
+      (html [:div.row-fluid
+             [:div.col-md-6 (om/build texts-view app)]
+             [:div.col-md-6 (om/build texts-view app)]]))))
+
 (om/root
-  texts-view
+  main-view
   app-state
   {:target (. js/document (getElementById "main"))})
 

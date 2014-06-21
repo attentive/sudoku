@@ -13,7 +13,7 @@
 
     [:body 
      
-     [:div.container-fluid [:div#main.jumbotron [:h1 "Hello World!"]]]
+     [:div.container-fluid [:div#main]]
 
      (include-js "/js/jquery.js")
      (include-js "/js/bootstrap.min.js")
