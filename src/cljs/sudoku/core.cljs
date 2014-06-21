@@ -4,6 +4,7 @@
             [om.dom :as dom :include-macros true]
             [sablono.core :as html :refer-macros [html]]
             [chord.client :refer [ws-ch]]
+            [clojure.string :as string]
             [cljs.core.async :refer [chan <! >! put! close! timeout]]
             [cljs.reader :as edn]))
 
@@ -31,12 +32,14 @@
              (>! server-chan text)
              (recur))))
 
-(defn bind! 
+(defn subscribe! 
   "Do a non-blocking bind of an Om component to the specified socket address, binding the 
-  web socket channel and an input channel."
-  [app owner socket-addr]
+  web socket channel and an input channel. The topic should be a vector of keywords into the 
+  state structure of interest, this is then submitted to server as eg
+  ws://localhost:8082/socket/:first/:second/:third etc"
+  [app owner socket-addr topic]
   (go (let [{:keys [ws-channel error]}
-            (<! (ws-ch socket-addr
+            (<! (ws-ch (string/join "/" (cons socket-addr (map name topic)))
                        {:format :json-kw}))
             input-channel (chan)]
         (om/set-state! owner :socket ws-channel)
@@ -53,7 +56,7 @@
   (reify
     om/IInitState
     (init-state [_]
-      (bind! app owner "ws://localhost:8082/socket")
+      (subscribe! app owner "ws://localhost:8082/socket" [:echo])
       {:socket nil
        :input nil})
     om/IRenderState
@@ -61,7 +64,7 @@
       (let [texts (get app :texts)]
         (html [:div
                [:div.row-fluid 
-                (map text-view texts)]
+                (reverse (map text-view texts))]
                [:div.row-fluid
                 [:input.input-large 
                  {:value (first texts)
